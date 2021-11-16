@@ -1,0 +1,28 @@
+{
+  "name": "eris-charm",
+  "version": "0.0.1",
+  "main": "dist/main.js",
+  "license": "MIT",
+  "source": "src/index.ts",
+  "types": "dist/types.d.ts",
+  "scripts": {
+    "watch": "parcel watch",
+    "build": "parcel build",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "prettier": "prettier -w ."
+  },
+  "devDependencies": {
+    "@types/jest": "^27.0.2",
+    "eslint": "^8.2.0",
+    "jest": "^27.3.1",
+    "parcel": "^2.0.1",
+    "prettier": "^2.4.1",
+    "ts-jest": "^27.0.7",
+    "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "eris": "^0.16.0",
+    "linked-list-typescript": "^1.0.15"
+  }
+}
