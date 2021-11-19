@@ -5,118 +5,132 @@ import { LinkedList } from "linked-list-typescript";
 type ComposeOptions = {
   restrict: ("owner" | "server-manager")[];
   timeout: number;
+  acknowledgeAllInteractions: boolean,
+  deleteAfterEach?: boolean
 };
 
-class CharmFlowTemplateInstance {
-  private _template:CharmFlowTemplate = new LinkedList<ComponentInteractionTap|CommandInteractionTap>();
-  private _createdAt = Date.now();
-  private _initiator: User;
-  timedOut = false;
-
-  constructor(template: LinkedList<ComponentInteractionTap|CommandInteractionTap>) {
-    this._template = template;
-  }
-  
-  get isComplete() {
-    return this._template.length === 0;
-  }
-
-  async next(
-    interaction?: Interaction,
-    lastItem?: Message | Interaction,
-    builderFactory?: (handler: ComponentInteractionHandler) => CharmFlowTemplateBuilder
-  ) {
-    if (lastItem && this._template.head instanceof CommandInteractionTap) {
-      throw new Error("Must tap command interaction first");
-    } else if (
-      !lastItem &&
-      this._template.head instanceof CommandInteraction === false
-    ) {
-      throw new Error("No item to check against");
-    }
-
-    const action = this._template.removeHead();
-    if (action instanceof CommandInteractionTap) {
-      if (interaction instanceof CommandInteraction === false) {
-        throw new Error("mismatch handler for command interaction");
-      }
-      await (interaction as CommandInteraction).acknowledge();
-      const result = await action.execute(interaction);
-      if (result instanceof Message === false) {
-        throw new Error("Expected message from command interaction");
-      }
-      if (result.components.length === 0) {
-        throw new Error("Expected message components from command interaction");
-      }
-      this._initiator = result.author;
-      return result;
-    } else if (action instanceof ComponentInteractionTap) {
-      if (interaction instanceof ComponentInteraction === false) {
-        throw new Error("mismatch handler for component interaction");
-      }
-      await (interaction as ComponentInteraction).acknowledge();
-
-      const result = await action.execute(interaction, builderFactory);
-
-      if (result) {
-        return result;
-      }
-      return interaction;
-    } else {
-      throw new Error("Unknown interaction");
-    }
-  }
-}
-
-class CharmFlowTemplateStack extends LinkedList<CharmFlowTemplateInstance|CharmFlowTemplateStack> {
+class CharmFlowTemplateStack extends LinkedList<
+  ComponentInteractionTap | CommandInteractionTap | CharmFlowTemplateStack
+> {
   private _lastResult: Message | Interaction;
   private _createChildTemplateBuilder: () => CharmFlowTemplateBuilder;
   private _builders: CharmFlowTemplateBuilder[] = [];
+  private _initiator: User;
 
-  constructor(createChildTemplateBuilder) {
+  constructor(template, createChildTemplateBuilder) {
     super();
     this._createChildTemplateBuilder = createChildTemplateBuilder;
+    for (const t of template) {
+      this.append(t);
+    }
   }
 
   private _createChildTemplateFactory(handler: ComponentInteractionHandler) {
-      const builder = this._createChildTemplateBuilder();
-      this._builders.push(builder);
-      return builder.flow(handler);
+    const builder = this._createChildTemplateBuilder();
+    this._builders.push(builder);
+    return builder.flow(handler);
+  }
+
+  async nextCommandInteraction(
+    interaction: CommandInteraction,
+    handler: CommandInteractionTap
+  ) {
+    if (this._lastResult) {
+      throw new Error("Must tap command interaction first");
+    }
+
+    await interaction.acknowledge();
+    const result = await handler.execute(interaction);
+    if (result instanceof Message === false) {
+      throw new Error("Expected message from command interaction");
+    }
+    if (result.components.length === 0) {
+      throw new Error("Expected message components from command interaction");
+    }
+    this._initiator = result.author;
+    return result;
+  }
+
+  async nextComponentInteraction(
+    interaction: ComponentInteraction,
+    handler: ComponentInteractionTap
+  ) {
+    if (!this._lastResult) {
+      throw new Error("No item to check against");
+    }
+
+    await interaction.acknowledge();
+    const result = await handler.execute(
+      interaction,
+      this._createChildTemplateFactory.bind(this)
+    );
+    if (result) {
+      return result;
+    }
+    return interaction;
   }
 
   async next(interaction: Interaction) {
-    const handler = this.head;
-    if (handler) {
-      this._builders = [];
-      const lastResult = await (handler as CharmFlowTemplateInstance).next(
-        interaction,
-        this._lastResult,
-        this._createChildTemplateFactory.bind(this)
-      );
-      
-      if (this._builders.length > 0) {
-          if (lastResult) {
-              throw new Error("Cannot create messages when forking")
-          }
-
-          for (const builder of this._builders) {
-              if (!builder.isEnded) {
-                throw new Error("Builder is not ended");
-              }
-              const stack = new CharmFlowTemplateStack(this._createChildTemplateBuilder);
-              stack.append(new CharmFlowTemplateInstance(builder.template))
-               this.append(stack);
-          }
-          
-          // new stacks, run immediately
-          await this.next(interaction);
-        
+    if (this._lastResult) {
+      if (this.head instanceof CommandInteractionTap) {
+        throw new Error("Must tap command interaction first");
       }
+      if (interaction instanceof ComponentInteraction === false) {
+          return;
+      }
+      if (this._lastResult instanceof Interaction) {
+          if (interaction.id !== this._lastResult.id) {
+            return;
+          }
+      } else if (this._lastResult instanceof Message) {
+        if ((interaction as ComponentInteraction).message .id !== this._lastResult.id) {
+          return;
+        }
+      }
+    }
+    const handler = this.head;
+    let result;
+    if (handler instanceof CommandInteractionTap) {
+      if (interaction instanceof CommandInteraction) {
+        result = await this.nextCommandInteraction(interaction, handler);
+        this.removeHead();
+      } else {
+        throw new Error("Expected command interaction");
+      }
+    } else if (handler instanceof ComponentInteractionTap) {
+      if (interaction instanceof ComponentInteraction) {
+        result = await this.nextComponentInteraction(interaction, handler);
+        this.removeHead();
+      } else {
+        throw new Error("Expected component interaction");
+      }
+    } else if (handler instanceof CharmFlowTemplateStack) {
+      await handler.next(interaction);
       if (handler.isComplete) {
         this.removeHead();
       }
     }
-    throw new Error("No handler");
+
+    this._builders = [];
+    if (this._builders.length > 0) {
+      if (result) {
+        throw new Error("Cannot create messages when forking");
+      }
+
+      for (const builder of this._builders) {
+        if (!builder.isEnded) {
+          throw new Error("Builder is not ended");
+        }
+        const stack = new CharmFlowTemplateStack(
+          builder.template,
+          this._createChildTemplateBuilder
+        );
+        this.append(stack);
+      }
+
+      // new stacks, run immediately with passthrough interaction
+      await this.next(interaction);
+    }
   }
 
   get isComplete() {
@@ -126,8 +140,7 @@ class CharmFlowTemplateStack extends LinkedList<CharmFlowTemplateInstance|CharmF
 
 class CharmFlowTemplateBinder extends EventEmitter {
   private _opts: ComposeOptions;
-  private _command: string | null;
-  private _stacks: Set<CharmFlowTemplateStack>;
+  private _stacks: Set<CharmFlowTemplateStack> = new Set();
   private _builder: CharmFlowTemplateBuilder;
   private _eventEmitter: EventEmitter;
 
@@ -144,6 +157,7 @@ class CharmFlowTemplateBinder extends EventEmitter {
 
   async interactionHandler(interaction) {
     const completedFlows = [];
+    console.log(CommandInteraction)
     if (interaction instanceof ComponentInteraction) {
       for (const stack of this._stacks) {
         await stack.next(interaction);
@@ -158,11 +172,10 @@ class CharmFlowTemplateBinder extends EventEmitter {
     }
 
     if (interaction instanceof CommandInteraction) {
-      if (this._command && interaction.data.name === this._command) {
-        const stack = new CharmFlowTemplateStack(
-          () => this._builder.createChildTemplate()
+      if (this._builder.command && interaction.data.name === this._builder.command) {
+        const stack = new CharmFlowTemplateStack(this._builder.template, () =>
+          this._builder.createChildTemplate()
         );
-        stack.append(new CharmFlowTemplateInstance(this._builder.template));
         this._stacks.add(stack);
         await stack.next(interaction);
       }
@@ -170,21 +183,25 @@ class CharmFlowTemplateBinder extends EventEmitter {
   }
 
   bind() {
-    this._eventEmitter.on("interactionCreate", this.interactionHandler);
+    this._eventEmitter.on("interactionCreate", this.interactionHandler.bind(this));
   }
 
   unbind() {
-    this._eventEmitter.off("interactionCreate", this.interactionHandler);
+    this._eventEmitter.off("interactionCreate", this.interactionHandler.bind(this));
   }
 }
 
-type CharmFlowTemplate = LinkedList<CommandInteractionTap|ComponentInteractionTap>;
+type CharmFlowTemplate = LinkedList<
+  CommandInteractionTap | ComponentInteractionTap
+>;
 
 class CharmFlowTemplateBuilder extends EventEmitter {
   private _opts: ComposeOptions;
   private _eventEmitter: EventEmitter;
   private _command: string | null;
-  private _template: CharmFlowTemplate = new LinkedList<CommandInteractionTap|ComponentInteractionTap>();
+  private _template: CharmFlowTemplate = new LinkedList<
+    CommandInteractionTap | ComponentInteractionTap
+  >();
   private _ended = false;
 
   constructor(
@@ -230,12 +247,11 @@ class CharmFlowTemplateBuilder extends EventEmitter {
   }
 }
 
+type BuilderFactory = (handler : ComponentInteractionHandler) => CharmFlowTemplateBuilder;
 type ComponentInteractionHandler = (
   interaction: ComponentInteraction,
-  builderFactory?: (
-    flow: (handler: ComponentInteractionHandler) => CharmFlowTemplateBuilder
-  ) => void
-) => Promise<void | Message<TextableChannel>>;
+  builderFactory?: BuilderFactory
+) => Promise<Message | Interaction | void>;
 
 class ComponentInteractionTap {
   private handler: ComponentInteractionHandler;
@@ -244,11 +260,11 @@ class ComponentInteractionTap {
     this.handler = handler;
   }
 
-  execute(
-    interaction,
-    builderFactory
+  async execute(
+    interaction: ComponentInteraction,
+    builderFactory: BuilderFactory
   ): ReturnType<ComponentInteractionHandler> {
-    return this.handler(interaction, builderFactory);
+    return await this.handler(interaction, builderFactory);
   }
 }
 
@@ -263,8 +279,8 @@ class CommandInteractionTap {
     this.handler = handler;
   }
 
-  execute(interaction): ReturnType<CommandInteractionHandler> {
-    return this.handler(interaction);
+  async execute(interaction): ReturnType<CommandInteractionHandler> {
+    return await this.handler(interaction);
   }
 }
 
@@ -275,11 +291,19 @@ export default class CharmFlow {
     this._bot = bot;
   }
 
-  onCommand(command: string, opts: ComposeOptions) {
+  onCommand(command: string, userOpts?: Partial<ComposeOptions>) {
+    const opts = Object.assign({}, {
+        restrict: ["owner", "server-manager"],
+        timeout: 30000,
+        acknowledgeAllInteractions: true,
+        deleteAfterEach: false
+    }, userOpts ?? {});
+    
     const builder = new CharmFlowTemplateBuilder(command, opts, this._bot);
     builder.on("end", () => {
       const binder = new CharmFlowTemplateBinder(builder, opts, this._bot);
       binder.bind();
     });
+    return builder;
   }
 }

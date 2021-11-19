@@ -10,7 +10,8 @@
     "build": "parcel build",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "prettier": "prettier -w ."
+    "prettier": "prettier -w .",
+    "test": "jest ."
   },
   "devDependencies": {
     "@types/jest": "^27.0.2",

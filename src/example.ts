@@ -23,7 +23,6 @@ function isMenuData(
 // create a flow template starting with onCommand().start()
 charm
   .onCommand("configure", {
-    restrict: ["owner", "server-manager"],
     timeout: 30000,
     deleteAfterEach: false
   }) 
