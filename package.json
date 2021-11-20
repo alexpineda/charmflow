@@ -3,8 +3,7 @@
   "version": "0.0.1",
   "main": "dist/main.js",
   "license": "MIT",
-  "source": "src/index.ts",
-  "types": "dist/types.d.ts",
+  "source": "src/index.js",
   "scripts": {
     "watch": "parcel watch",
     "build": "parcel build",
@@ -13,14 +12,14 @@
     "prettier": "prettier -w .",
     "test": "jest ."
   },
+  "engines": {
+    "node": ">= 12"
+  },
   "devDependencies": {
-    "@types/jest": "^27.0.2",
     "eslint": "^8.2.0",
     "jest": "^27.3.1",
     "parcel": "^2.0.1",
-    "prettier": "^2.4.1",
-    "ts-jest": "^27.0.7",
-    "typescript": "^4.4.4"
+    "prettier": "^2.4.1"
   },
   "dependencies": {
     "eris": "^0.16.0",
