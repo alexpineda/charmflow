@@ -1,7 +1,8 @@
 const Eris = require("eris");
-const CharmFlow = require("./main");
+const CharmFlow = require("../index");
 const Constants = Eris.Constants;
 
+// setup the client
 var bot = new Eris.CommandClient(process.env.DISCORD_BOT_TOKEN);
 bot.on("ready", () => {
   console.log("eris: ready");
@@ -16,12 +17,12 @@ bot.on("ready", () => {
   }
 });
 
+// setup the flow
 const charmFlow = new CharmFlow(bot);
 charmFlow
   .onCommand("configure") // handle the configure command
-  .restrict(["initiator"]) // only the user who initiated can continue
-  .flow( async (interaction) => { // Eris.CommandInteraction or Eris.ComponentInteraction
-    return await interaction.createFollowup({ 
+  .flow( interaction => { // Eris.CommandInteraction
+    return interaction.createFollowup({ 
       content: "Where should iCalbot send event notifications?",
       components: [
         {
@@ -52,9 +53,9 @@ charmFlow
     });
   })
    // from now on chain flow() to handle results and send additional messages
-  .flow(async (interaction) => {
+  .flow(async (interaction, flow) => { // Eris.CommandInteraction
+    // if the user selected a message option, spawn the subflow to be handled before continuing this top flow
     if (interaction.data && interaction.data.values.includes("message")) {
-      // create a new flow that will be handled next before continuing the parent flow
       flow( interaction => {
         return interaction.createFollowup({
           content: "What channel should we send messages to?",
@@ -83,23 +84,19 @@ charmFlow
             }
           ]
         });
-      }).flow(async (interaction) => {
-        return await interaction.createMessage(
+      }).end((interaction) => {
+        return interaction.createFollowup(
           `sending to channels ${ interaction.data.values.join(',')}`
         )
-      }).end(); // required: end() -> end the flow
+      });
     } else {
-      flow(async (interaction) => {
-        return await interaction.createMessage(
-          "not sending to channels"
-        )
-      }).end();
+      return await interaction.createFollowup(
+        "not sending to channels"
+      )
     }
-  }) // if flows don't return a message (createFollowup) they pass through the previous interaction
-  .flow(async interaction => {
-    await interaction.createMessage("bye!");
   })
-  .keepPreviousMessage()
+  .flow(async interaction => interaction.createFollowup("bye!"))
+  .keepMessage() // keep the "bye!"
   .deleteMessages()
   .end()
 
