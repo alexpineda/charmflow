@@ -41,6 +41,7 @@ charmFlow.onCommand("setup")
     .flow((interaction, flow) => { 
         // do this if they picked yes
         if (interaction.data.values.includes("yes")) {
+	  // optionally kick off other subflows with flow()
         }
     })
     .deleteMessages() // delete top level messages except for the first
