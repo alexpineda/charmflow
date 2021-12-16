@@ -1,6 +1,6 @@
 {
   "name": "charmflow",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "main": "dist/main.js",
   "license": "MIT",
   "source": "src/index.js",
