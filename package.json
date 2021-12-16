@@ -1,9 +1,17 @@
 {
   "name": "charmflow",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "main": "dist/main.js",
   "license": "MIT",
   "source": "src/index.js",
+  "keywords": [
+    "discord",
+    "bot",
+    "eris"
+  ],
+  "author": "Alex Pineda <alexpineda@fastmail.com>",
+  "description": "Easily create Discord interaction sequences with Eris",
+  "repository": "github:alexpineda/charmflow",
   "scripts": {
     "watch": "parcel watch",
     "build": "parcel build",
@@ -22,7 +30,9 @@
     "prettier": "^2.4.1"
   },
   "dependencies": {
-    "eris": "^0.16.0",
     "linked-list-typescript": "^1.0.15"
+  },
+  "peerDependencies": {
+    "eris": "^0.16.0"
   }
 }

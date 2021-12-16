@@ -1,6 +1,6 @@
 # CharmFlow
 
-A charmful adapter for Eris to create message component based wizards and configuration dialogs.
+Easily create Discord interaction sequences with [Eris](https://github.com/abalabahaha/eris).
 
 ## Table of contents
 - [CharmFlow](#charmflow)
@@ -11,10 +11,11 @@ A charmful adapter for Eris to create message component based wizards and config
   - [License](#license)
 
 ## Features
-- Create multiple branching flows depending on user choices
+- Easily create sequential flows without worrying about interaction or message id's
+- Branch depending on user choices
 - Delete or keep messages easily
 - Cleanup at the end or after timing out
-- Low API surface mostly exposing Eris.CommandClient at each interaction
+- Low API surface mostly exposing Eris.ComponentInteraction at each step in the sequence
 - Automatically acknowledges interactions
 
 ## Setup
@@ -41,7 +42,7 @@ charmFlow.onCommand("setup")
     .flow((interaction, flow) => { 
         // do this if they picked yes
         if (interaction.data.values.includes("yes")) {
-	  // optionally kick off other subflows with flow()
+	      // optionally kick off other subflows with flow() or store stuff in db
         }
     })
     .deleteMessages() // delete top level messages except for the first

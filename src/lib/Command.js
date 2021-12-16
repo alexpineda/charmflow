@@ -8,7 +8,7 @@ class Command  {
       this._opts = Object.assign(
         {},
         {
-          timeout: 30000,
+          timeout: 0,
           debug: false,
           plugins: [],
         },
