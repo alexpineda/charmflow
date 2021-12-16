@@ -38,11 +38,11 @@ const charmFlow = new CharmFlow(erisClient);
 charmFlow.onCommand("setup")
     .flow(interaction => interaction.createFollowup("Hey welcome to My Bot, this is a quick setup guide!"))
     .keepMessage()
-    .flow(interaction => interaction.createFollowup(/* ... */))
+    .flow(interaction => interaction.createFollowup(/* ... message with components ... */))
     .flow((interaction, flow) => { 
-        // do this if they picked yes
+    	// next step, handle response, store stuff in db, etc..
         if (interaction.data.values.includes("yes")) {
-	      // optionally kick off other subflows with flow() or store stuff in db
+	      // conditionally kick off other subflows with flow()
         }
     })
     .deleteMessages() // delete top level messages except for the first
