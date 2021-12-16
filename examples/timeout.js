@@ -15,7 +15,7 @@ bot.on("ready", () => {
 });
 
 
-const charmFlow = new CharmFlow(bot, { timeout: 5000 }); // global timeout setting, default: 30_000
+const charmFlow = new CharmFlow(bot, { timeout: 5000 }); // global timeout setting, default: 0 (no timeout)
 charmFlow
   .onCommand("configure", { timeout: 10000 }) // command-specific timeout setting, overrides global
   .flow(async (interaction) => {

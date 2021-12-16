@@ -6,7 +6,7 @@ const Constants = Eris.Constants;
 var bot = new Eris.CommandClient(process.env.DISCORD_BOT_TOKEN);
 bot.on("ready", () => {
   console.log("eris: ready");
-  for (const [key, guild] of bot.guilds) {
+  for (const [, guild] of bot.guilds) {
     guild.bulkEditCommands([
       {
         name: "configure",
@@ -90,6 +90,7 @@ charmFlow
         )
       });
     } else {
+      // note: you don't actually have to return anything if you don't want to!
       return await interaction.createFollowup(
         "not sending to channels"
       )

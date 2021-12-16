@@ -20,12 +20,12 @@ const charmFlow = new CharmFlow(bot);
 charmFlow
   .onCommand("configure")
   .flow( (interaction, flow, acc) => {
-    // add to this in any flow, even subflows, it's always the same object
-    acc.hello = "world";
+    // add to this in any flow, even subflows, it's always the same reference
+    acc.selection = interaction.data.values;
   })
   .end(async (interaction, timedOut, acc) => {
       // use it wherever you need it, usually at the end to show final results
       await interaction.createFollowup({
-        content: `Hello ${acc.hello}`,
+        content: `User selected ${acc.selection.join(", ")}`,
       });
   });
