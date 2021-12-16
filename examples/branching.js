@@ -2,7 +2,6 @@ const Eris = require("eris");
 const CharmFlow = require("../src/index");
 const Constants = Eris.Constants;
 
-// setup the client
 var bot = new Eris.CommandClient(process.env.DISCORD_BOT_TOKEN);
 bot.on("ready", () => {
   console.log("eris: ready");
@@ -17,7 +16,6 @@ bot.on("ready", () => {
   }
 });
 
-// setup the flow
 const charmFlow = new CharmFlow(bot);
 charmFlow
   .onCommand("configure") // handle the configure command
@@ -52,8 +50,7 @@ charmFlow
       ]
     });
   })
-   // from now on chain flow() to handle results and send additional messages
-  .flow(async (interaction, flow) => { // Eris.CommandInteraction
+  .flow(async (interaction, flow) => { // Eris.ComponentInteraction
     // if the user selected a message option, spawn the subflow to be handled before continuing this top flow
     if (interaction.data && interaction.data.values.includes("message")) {
       flow( interaction => {
@@ -97,8 +94,8 @@ charmFlow
     }
   })
   .flow(async interaction => interaction.createFollowup("bye!"))
-  .keepMessage() // keep the "bye!"
+  .keepMessage() // keep the "bye!" for fun
   .deleteMessages()
   .end()
 
-bot.connect(); // Get the bot to connect to Discord
+bot.connect();

@@ -20,7 +20,7 @@ const charmFlow = new CharmFlow(bot);
 charmFlow
   .onCommand("configure")
   .flow( (interaction, flow, acc) => {
-    // add to this in any flow, even subflows, it's always the same reference
+    // add to the `acc` object in any flow, even subflows, it's always the same reference
     acc.selection = interaction.data.values;
   })
   .end(async (interaction, timedOut, acc) => {

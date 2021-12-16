@@ -8,6 +8,6 @@ charmFlow
   .onCommand("one two") // two is a subcommand
   .end(async (interaction, timedOut, acc) => {
       await interaction.createFollowup({
-        content: `Great job commander!`,
+        content: `Great job subcommander!`,
       });
   });
