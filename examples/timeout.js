@@ -33,8 +33,7 @@ charmFlow
   /** other flows */
   .deleteMessages()
   .end(async (interaction, acc, timedOut, messages) => {
-     // While not used in this example, you can use forceDelete in child flows 
-     // in order to delete even kept messages on timeout
+     // While not used in this example, you can use messages.deleteAnyMessages() to delete even kept messages on timeout
     if (timedOut) {
       await interaction.editOriginalMessage({
         content: `Configuration Timed Out`,
